@@ -5,15 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
+            "type": "cppdbg",
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/dcc",
-            "args": [],
-            "stdio": [
-                "${workspaceFolder}/samples/sort.decaf"
+            "args": [
+                "<",
+                "${workspaceFolder}/tests/simple.decaf"
             ],
-            "cwd": "${workspaceFolder}"
+            "setupCommands": [
+                {
+                    "text": "-enable-pretty-printing",
+                    "description": "enable pretty printing",
+                    "ignoreFailures": true
+                },
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
         }
     ]
 }

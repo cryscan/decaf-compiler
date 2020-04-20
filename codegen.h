@@ -216,8 +216,12 @@ template <typename T> class Graph {
 
 public:
   void AddEdge(T u, T v) {
-    data[u].insert(v);
-    data[v].insert(u);
+    if (u == v)
+      data[u];
+    else {
+      data[u].insert(v);
+      data[v].insert(u);
+    }
   }
 
   void KColor(int k) {
@@ -234,10 +238,9 @@ public:
     Value e;
 
     // find a vertex whose degree is less than k
-    auto iter =
-        std::find_if(data.begin(), data.end(), [k](std::pair<T, Value> &p) {
-          return p.second.size() < k;
-        });
+    auto iter = std::find_if(
+        data.begin(), data.end(),
+        [k](const std::pair<T, Value> &p) { return p.second.size() < k; });
     if (iter == data.end())
       iter = data.begin();
 
@@ -259,9 +262,11 @@ public:
     }
 
     if (colors.empty()) {
+      // spill the vertex
       color[u] = 0;
     } else {
       color[u] = *colors.begin();
+      AddEdges(u, e);
     }
   }
 

@@ -286,7 +286,12 @@ public:
   LCall(const char *labe, Location *result);
   void EmitSpecific(Mips *mips);
 
-  LocationSet Kill() const { return {dst}; }
+  LocationSet Kill() const {
+    LocationSet set;
+    if (dst)
+      set.insert(dst);
+    return set;
+  }
 };
 
 class ACall : public Instruction {
@@ -296,7 +301,12 @@ public:
   ACall(Location *meth, Location *result);
   void EmitSpecific(Mips *mips);
 
-  LocationSet Kill() const { return {dst}; }
+  LocationSet Kill() const {
+    LocationSet set;
+    if (dst)
+      set.insert(dst);
+    return set;
+  }
   LocationSet Gen() const { return {methodAddr}; }
 };
 

@@ -245,28 +245,21 @@ void CodeGenerator::LiveAnalyze(int begin, int end) {
       // union of successors' in
       LocationSet out;
       for (auto succ : inst->GetSucc()->Get()) {
-        LocationSet temp;
         auto &succIn = instIn.at(succ);
-        std::set_union(out.begin(), out.end(), succIn.begin(), succIn.end(),
-                       std::inserter(temp, temp.begin()));
-        std::swap(out, temp);
+        out.insert(succIn.begin(), succIn.end());
       }
 
-      instOut.emplace(inst, out);
+      instOut[inst] = out;
 
       auto kill = inst->Kill();
       auto gen = inst->Gen();
+
       {
         LocationSet temp;
         std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
                             std::inserter(temp, temp.begin()));
-        std::swap(out, temp);
-      }
-      {
-        LocationSet temp;
-        std::set_union(out.begin(), out.end(), gen.begin(), gen.end(),
-                       std::inserter(temp, temp.begin()));
-        std::swap(out, temp);
+        std::set_union(temp.begin(), temp.end(), gen.begin(), gen.end(),
+                       std::inserter(out, out.begin()));
       }
 
       auto &in = instIn.at(inst);
@@ -280,7 +273,32 @@ void CodeGenerator::LiveAnalyze(int begin, int end) {
 
 void CodeGenerator::AllocRegister(int begin, int end) {
   Graph<Location *> graph;
+  LocationSet varSet;
+
   for (int i = begin; i < end; ++i) {
+    auto inst = code->Nth(i);
+    LocationSet interf, kill, out;
+    kill = inst->Kill();
+    out = instOut.at(inst);
+    std::set_union(kill.begin(), kill.end(), out.begin(), out.end(),
+                   std::inserter(interf, interf.begin()));
+
+    for (auto u : interf)
+      for (auto v : interf)
+        graph.AddEdge(u, v);
+
+    varSet.insert(interf.begin(), interf.end());
+  }
+
+  graph.KColor(Mips::NumGeneralPurposeRegs);
+  auto color = graph.GetColor();
+
+  for (auto var : varSet) {
+    auto index = color[var];
+    if (index > 0) {
+      auto reg = Mips::Register((int)Mips::t0 + index);
+      var->SetRegister(reg);
+    }
   }
 }
 
@@ -296,6 +314,7 @@ void CodeGenerator::Optimize() {
       end = i;
       BuildControlFlow(begin, end);
       LiveAnalyze(begin, end);
+      AllocRegister(begin, end);
     }
   }
 }
