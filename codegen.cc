@@ -8,11 +8,15 @@
 #include "codegen.h"
 #include "mips.h"
 #include "tac.h"
+#include <algorithm>
 #include <string.h>
+
+auto &codeGen = CodeGenerator::Instance();
 
 CodeGenerator::CodeGenerator()
     : globalCounter{0}, paramCounter{0}, localCounter{0} {
-  code = new List<Instruction *>();
+  code = new List<Instruction *>;
+  labels = new std::map<std::string, Label *>;
 }
 
 CodeGenerator &CodeGenerator::Instance() {
@@ -199,4 +203,99 @@ void CodeGenerator::DoFinalCodeGen() {
   }
 }
 
-auto &codeGen = CodeGenerator::Instance();
+void CodeGenerator::CollectLabels() {
+  for (auto inst : code->Get())
+    if (auto label = dynamic_cast<Label *>(inst))
+      labels->emplace(label->GetLabel(), label);
+}
+
+void Goto::AddExtraSucc() {
+  auto labels = codeGen.GetLabels();
+  auto inst = labels->at(label);
+  succ->Append(inst);
+}
+
+void IfZ::AddExtraSucc() {
+  auto labels = codeGen.GetLabels();
+  auto inst = labels->at(label);
+  succ->Append(inst);
+}
+
+void CodeGenerator::BuildControlFlow(int begin, int end) {
+  for (int i = begin; i < end - 1; ++i) {
+    auto inst = code->Nth(i);
+    auto next = code->Nth(i + 1);
+    inst->AddSucc(next);
+    inst->AddExtraSucc();
+  }
+}
+
+void CodeGenerator::LiveAnalyze(int begin, int end) {
+  for (int i = begin; i < end; ++i) {
+    auto inst = code->Nth(i);
+    instIn.emplace(inst, LocationSet());
+  }
+
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int i = begin; i < end; ++i) {
+      auto inst = code->Nth(i);
+
+      // union of successors' in
+      LocationSet out;
+      for (auto succ : inst->GetSucc()->Get()) {
+        LocationSet temp;
+        auto &succIn = instIn.at(succ);
+        std::set_union(out.begin(), out.end(), succIn.begin(), succIn.end(),
+                       std::inserter(temp, temp.begin()));
+        std::swap(out, temp);
+      }
+
+      instOut.emplace(inst, out);
+
+      auto kill = inst->Kill();
+      auto gen = inst->Gen();
+      {
+        LocationSet temp;
+        std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
+                            std::inserter(temp, temp.begin()));
+        std::swap(out, temp);
+      }
+      {
+        LocationSet temp;
+        std::set_union(out.begin(), out.end(), gen.begin(), gen.end(),
+                       std::inserter(temp, temp.begin()));
+        std::swap(out, temp);
+      }
+
+      auto &in = instIn.at(inst);
+      if (in != out) {
+        changed = true;
+        std::swap(in, out);
+      }
+    }
+  }
+}
+
+void CodeGenerator::AllocRegister(int begin, int end) {
+  Graph<Location *> graph;
+  for (int i = begin; i < end; ++i) {
+  }
+}
+
+void CodeGenerator::Optimize() {
+  CollectLabels();
+
+  int begin = 0, end = 0;
+  for (int i = 0; i < code->NumElements(); ++i) {
+    auto inst = code->Nth(i);
+    if (dynamic_cast<BeginFunc *>(inst)) {
+      begin = i;
+    } else if (dynamic_cast<EndFunc *>(inst)) {
+      end = i;
+      BuildControlFlow(begin, end);
+      LiveAnalyze(begin, end);
+    }
+  }
+}

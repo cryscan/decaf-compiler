@@ -67,7 +67,15 @@ class Instruction {
 protected:
   char printed[128];
 
+  List<Instruction *> *succ;
+
 public:
+  Instruction() { succ = new List<Instruction *>; }
+
+  virtual void AddSucc(Instruction *inst) { succ->Append(inst); }
+  virtual void AddExtraSucc() {}
+  List<Instruction *> *GetSucc() const { return succ; }
+
   virtual LocationSet Kill() const { return LocationSet(); };
   virtual LocationSet Gen() const { return LocationSet(); };
 
@@ -201,6 +209,9 @@ public:
   Goto(const char *label);
   void EmitSpecific(Mips *mips);
   const char *GetLabel() { return label; }
+
+  void AddSucc(Instruction *) {}
+  void AddExtraSucc();
 };
 
 class IfZ : public Instruction {
@@ -213,6 +224,8 @@ public:
   const char *GetLabel() { return label; }
 
   LocationSet Gen() const { return {test}; }
+
+  void AddExtraSucc();
 };
 
 class BeginFunc : public Instruction {
@@ -223,12 +236,16 @@ public:
   // used to backpatch the instruction with frame size once known
   void SetFrameSize(int numBytesForAllLocalsAndTemps);
   void EmitSpecific(Mips *mips);
+
+  void AddSucc(Instruction *) {}
 };
 
 class EndFunc : public Instruction {
 public:
   EndFunc();
   void EmitSpecific(Mips *mips);
+
+  void AddSucc(Instruction *) {}
 };
 
 class Return : public Instruction {
@@ -239,6 +256,8 @@ public:
   void EmitSpecific(Mips *mips);
 
   LocationSet Kill() const { return {val}; }
+
+  void AddSucc(Instruction *) {}
 };
 
 class PushParam : public Instruction {
@@ -289,6 +308,8 @@ public:
   VTable(const char *labelForTable, List<const char *> *methodLabels);
   void Print();
   void EmitSpecific(Mips *mips);
+
+  void AddSucc(Instruction *) {}
 };
 
 #endif

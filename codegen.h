@@ -16,7 +16,12 @@
 
 #include "list.h"
 #include "tac.h"
+#include <algorithm>
+#include <map>
+#include <numeric>
+#include <set>
 #include <stdlib.h>
+#include <vector>
 
 // These codes are used to identify the built-in functions
 typedef enum {
@@ -34,11 +39,21 @@ typedef enum {
 class CodeGenerator {
 private:
   List<Instruction *> *code;
+
+  std::map<std::string, Label *> *labels;
+  std::map<Instruction *, LocationSet> instIn, instOut;
+
   int globalCounter;
   int paramCounter;
   int localCounter;
 
   CodeGenerator();
+
+  void CollectLabels();
+
+  void BuildControlFlow(int begin, int end);
+  void LiveAnalyze(int begin, int end);
+  void AllocRegister(int begin, int end);
 
 public:
   // Here are some class constants to remind you of the offsets
@@ -56,6 +71,8 @@ public:
   static const int VarSize = 4;
 
   static CodeGenerator &Instance();
+  std::map<std::string, Label *> *GetLabels() { return labels; }
+
   int GetFrameSize();
 
   // Assigns a new unique label name and returns it. Does not
@@ -168,6 +185,8 @@ public:
   // need access to the vtable, you use LoadLabel of class name.
   void GenVTable(const char *className, List<const char *> *methodLabels);
 
+  void Optimize();
+
   // Emits the final "object code" for the program by
   // translating the sequence of Tac instructions into their mips
   // equivalent and printing them out to stdout. If the debug
@@ -175,6 +194,78 @@ public:
   // but instead just print the untranslated Tac. It may be
   // useful in debugging to first make sure your Tac is correct.
   void DoFinalCodeGen();
+};
+
+template <typename T> class Graph {
+  using Value = std::set<T>;
+
+  std::map<T, Value> data;
+  std::map<T, int> color;
+
+  void RemoveVert(T u) {
+    for (auto v : data.at(u))
+      data.at(v).erase(u);
+    data.erase(u);
+  }
+
+  void AddEdges(T u, Value e) {
+    for (auto v : e)
+      data[v].insert(u);
+    data.emplace(u, e);
+  }
+
+public:
+  void AddEdge(T u, T v) {
+    data[u].insert(v);
+    data[v].insert(u);
+  }
+
+  void KColor(int k) {
+    if (data.empty())
+      return;
+
+    if (data.size() == 1) {
+      T v = data.begin()->first;
+      color[v] = 1;
+      return;
+    }
+
+    T u;
+    Value e;
+
+    // find a vertex whose degree is less than k
+    auto iter =
+        std::find_if(data.begin(), data.end(), [k](std::pair<T, Value> &p) {
+          return p.second.size() < k;
+        });
+    if (iter == data.end())
+      iter = data.begin();
+
+    u = iter->first;
+    e = iter->second;
+
+    RemoveVert(u);
+    KColor(k);
+
+    std::set<int> colors;
+    {
+      std::vector<int> range(k);
+      std::iota(range.begin(), range.end(), 1);
+      colors = std::set<int>(range.begin(), range.end());
+    }
+    for (auto v : e) {
+      int used = color.at(v);
+      colors.erase(used);
+    }
+
+    if (colors.empty()) {
+      color[u] = 0;
+    } else {
+      color[u] = *colors.begin();
+    }
+  }
+
+  const std::map<T, int> &GetColor() const { return color; }
 };
 
 #endif
