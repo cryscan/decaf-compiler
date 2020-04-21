@@ -68,7 +68,6 @@ public:
 };
 
 template <typename T> void Node::CollectSymbols(List<T> *list) {
-  static_assert(std::is_convertible<T, Decl *>::value);
   symbols = new Hashtable<Decl *>();
   for (auto &elem : list->Get()) {
     auto name = elem->GetName();
@@ -81,7 +80,6 @@ template <typename T> void Node::CollectSymbols(List<T> *list) {
 }
 
 template <typename T> T Node::FindParentByType() const {
-  static_assert(std::is_convertible<T, Node *>::value);
   if (!parent)
     return nullptr;
   if (auto decl = dynamic_cast<T>(parent))
