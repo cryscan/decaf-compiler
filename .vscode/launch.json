@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/dcc",
             "args": [
                 "<",
-                "${workspaceFolder}/samples/stack.decaf"
+                "${workspaceFolder}/samples/t8.decaf"
             ],
             "setupCommands": [
                 {

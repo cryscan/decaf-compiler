@@ -256,8 +256,9 @@ void CodeGenerator::AllocRegister(int begin, int end) {
                    std::inserter(interf, interf.begin()));
 
     for (auto u : interf)
-      for (auto v : interf)
+      for (auto v : interf) {
         graph.AddEdge(u, v);
+      }
 
     std::set_union(kill.begin(), kill.end(), gen.begin(), gen.end(),
                    std::inserter(varSet, varSet.begin()));

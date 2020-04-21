@@ -254,7 +254,11 @@ public:
   Return(Location *val);
   void EmitSpecific(Mips *mips);
 
-  LocationSet Gen() const { return {val}; }
+  LocationSet Gen() const {
+    if (val)
+      return {val};
+    return LocationSet();
+  }
 };
 
 class PushParam : public Instruction {
