@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/dcc",
             "args": [
                 "<",
-                "${workspaceFolder}/samples/t8.decaf"
+                "${workspaceFolder}/samples/matrix.decaf"
             ],
             "setupCommands": [
                 {

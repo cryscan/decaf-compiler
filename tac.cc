@@ -212,6 +212,12 @@ void VTable::Print() {
 }
 void VTable::EmitSpecific(Mips *mips) { mips->EmitVTable(label, methodLabels); }
 
+void Instruction::Clear() {
+  succ->Clear();
+  in.clear();
+  out.clear();
+}
+
 bool Instruction::UpdateLiveVar() {
   out = LocationSet();
   for (auto inst : succ->Get()) {
@@ -230,4 +236,11 @@ bool Instruction::UpdateLiveVar() {
     return true;
   }
   return false;
+}
+
+bool Instruction::Dead() const {
+  LocationSet inter, kill = Kill();
+  std::set_intersection(kill.begin(), kill.end(), out.begin(), out.end(),
+                        std::inserter(inter, inter.begin()));
+  return inter != kill;
 }

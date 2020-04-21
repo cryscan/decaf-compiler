@@ -73,6 +73,8 @@ protected:
 public:
   Instruction() { succ = new List<Instruction *>; }
 
+  void Clear();
+
   virtual void AddSucc(Instruction *inst) { succ->Append(inst); }
   List<Instruction *> *GetSucc() const { return succ; }
 
@@ -82,6 +84,8 @@ public:
   bool UpdateLiveVar();
   const LocationSet &GetIn() const { return in; }
   const LocationSet &GetOut() const { return out; }
+
+  virtual bool Dead() const;
 
   virtual void Print();
   virtual void EmitSpecific(Mips *mips) = 0;
@@ -293,6 +297,7 @@ public:
       set.insert(dst);
     return set;
   }
+  bool Dead() const { return false; }
 };
 
 class ACall : public Instruction {
@@ -309,6 +314,7 @@ public:
     return set;
   }
   LocationSet Gen() const { return {methodAddr}; }
+  bool Dead() const { return false; }
 };
 
 class VTable : public Instruction {

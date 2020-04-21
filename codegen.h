@@ -52,8 +52,9 @@ private:
   void BuildControlFlow(int begin, int end);
   void LiveAnalyze(int begin, int end);
   void AllocRegister(int begin, int end);
+  void DeadCodeElim();
 
-  void DoCodeGen(int begin, int end);
+  void DoFinalCodeGeneration(int begin, int end);
 
 public:
   // Here are some class constants to remind you of the offsets
@@ -185,7 +186,7 @@ public:
   // need access to the vtable, you use LoadLabel of class name.
   void GenVTable(const char *className, List<const char *> *methodLabels);
 
-  void Process();
+  void PostProcess();
 
   // Emits the final "object code" for the program by
   // translating the sequence of Tac instructions into their mips

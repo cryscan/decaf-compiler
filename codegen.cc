@@ -244,6 +244,17 @@ void CodeGenerator::LiveAnalyze(int begin, int end) {
   }
 }
 
+void CodeGenerator::DeadCodeElim() {
+  auto result = new List<Instruction *>;
+  for (auto inst : code->Get()) {
+    if (!inst->Dead())
+      result->Append(inst);
+    inst->Clear();
+  }
+  std::swap(code, result);
+  delete result;
+}
+
 void CodeGenerator::AllocRegister(int begin, int end) {
   Graph<Location *> graph;
   LocationSet varSet;
@@ -276,7 +287,49 @@ void CodeGenerator::AllocRegister(int begin, int end) {
   }
 }
 
-void CodeGenerator::DoCodeGen(int begin, int end) {
+void CodeGenerator::PostProcess() {
+  CollectLabels();
+
+  int begin = 0, end = 0;
+  for (int i = 0; i < code->NumElements(); ++i) {
+    auto inst = code->Nth(i);
+    if (dynamic_cast<BeginFunc *>(inst)) {
+      begin = i;
+      // DoFinalCodeGeneration(end, begin);
+    } else if (dynamic_cast<EndFunc *>(inst)) {
+      end = i;
+
+      BuildControlFlow(begin, end);
+      LiveAnalyze(begin, end);
+
+      // AllocRegister(begin, end);
+      // DoFinalCodeGeneration(begin, end);
+    }
+  }
+  // DoFinalCodeGeneration(end, code->NumElements());
+
+  DeadCodeElim();
+
+  begin = end = 0;
+  for (int i = 0; i < code->NumElements(); ++i) {
+    auto inst = code->Nth(i);
+    if (dynamic_cast<BeginFunc *>(inst)) {
+      begin = i;
+      DoFinalCodeGeneration(end, begin);
+    } else if (dynamic_cast<EndFunc *>(inst)) {
+      end = i;
+
+      BuildControlFlow(begin, end);
+      LiveAnalyze(begin, end);
+
+      AllocRegister(begin, end);
+      DoFinalCodeGeneration(begin, end);
+    }
+  }
+  DoFinalCodeGeneration(end, code->NumElements());
+}
+
+void CodeGenerator::DoFinalCodeGeneration(int begin, int end) {
   if (IsDebugOn("tac")) { // if debug don't translate to mips, just print Tac
     for (int i = begin; i < end; ++i)
       code->Nth(i)->Print();
@@ -286,26 +339,4 @@ void CodeGenerator::DoCodeGen(int begin, int end) {
     for (int i = begin; i < end; ++i)
       code->Nth(i)->Emit(&mips);
   }
-}
-
-void CodeGenerator::Process() {
-  CollectLabels();
-
-  int begin = 0, end = 0;
-  for (int i = 0; i < code->NumElements(); ++i) {
-    auto inst = code->Nth(i);
-    if (dynamic_cast<BeginFunc *>(inst)) {
-      begin = i;
-
-      DoCodeGen(end, begin);
-    } else if (dynamic_cast<EndFunc *>(inst)) {
-      end = i;
-      BuildControlFlow(begin, end);
-      LiveAnalyze(begin, end);
-      AllocRegister(begin, end);
-
-      DoCodeGen(begin, end);
-    }
-  }
-  DoCodeGen(end, code->NumElements());
 }

@@ -49,7 +49,7 @@ void Program::Emit() {
   for (auto decl : decls->Get())
     decl->Emit();
 
-  codeGen.Process();
+  codeGen.PostProcess();
   // codeGen.DoFinalCodeGen();
 }
 
