@@ -159,13 +159,17 @@ void LCall::EmitSpecific(Mips *mips) {
   /* pp5: need to save registers before a function call
    * and restore them back after the call.
    */
-  for (auto param : in)
+  LocationSet save, kill = Kill();
+  std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
+                      std::inserter(save, save.begin()));
+
+  for (auto param : save)
     if (auto reg = param->GetRegister())
       mips->SpillRegister(param, reg);
 
   mips->EmitLCall(dst, label);
 
-  for (auto param : in)
+  for (auto param : save)
     if (auto reg = param->GetRegister())
       mips->FillRegister(param, reg);
 }
@@ -179,13 +183,17 @@ void ACall::EmitSpecific(Mips *mips) {
   /* pp5: need to save registers before a function call
    * and restore them back after the call.
    */
-  for (auto param : in)
+  LocationSet save, kill = Kill();
+  std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
+                      std::inserter(save, save.begin()));
+
+  for (auto param : save)
     if (auto reg = param->GetRegister())
       mips->SpillRegister(param, reg);
 
   mips->EmitACall(dst, methodAddr);
 
-  for (auto param : in)
+  for (auto param : save)
     if (auto reg = param->GetRegister())
       mips->FillRegister(param, reg);
 }

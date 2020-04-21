@@ -65,7 +65,8 @@ Location *CodeGenerator::GenParamVar(const char *name) {
 }
 
 Location *CodeGenerator::GenThis() {
-  return new Location(fpRelative, OffsetToFirstParam, "this");
+  static auto loc = new Location(fpRelative, OffsetToFirstParam, "this");
+  return loc;
 }
 
 Location *CodeGenerator::GenLoadConstant(int value) {
