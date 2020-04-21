@@ -39,9 +39,7 @@ typedef enum {
 class CodeGenerator {
 private:
   List<Instruction *> *code;
-
   std::map<std::string, Label *> *labels;
-  std::map<Instruction *, LocationSet> instIn, instOut;
 
   int globalCounter;
   int paramCounter;

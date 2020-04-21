@@ -5,6 +5,7 @@
 
 #include "tac.h"
 #include "mips.h"
+#include <algorithm>
 #include <deque>
 #include <string.h>
 
@@ -126,6 +127,9 @@ void BeginFunc::EmitSpecific(Mips *mips) {
   mips->EmitBeginFunction(frameSize);
   /* pp5: need to load all parameters to the allocated registers.
    */
+  for (auto param : out)
+    if (auto reg = param->GetRegister())
+      mips->FillRegister(param, reg);
 }
 
 EndFunc::EndFunc() : Instruction() { sprintf(printed, "EndFunc"); }
@@ -155,7 +159,15 @@ void LCall::EmitSpecific(Mips *mips) {
   /* pp5: need to save registers before a function call
    * and restore them back after the call.
    */
+  for (auto param : in)
+    if (auto reg = param->GetRegister())
+      mips->SpillRegister(param, reg);
+
   mips->EmitLCall(dst, label);
+
+  for (auto param : in)
+    if (auto reg = param->GetRegister())
+      mips->FillRegister(param, reg);
 }
 
 ACall::ACall(Location *ma, Location *d) : dst(d), methodAddr(ma) {
@@ -183,3 +195,26 @@ void VTable::Print() {
   printf("; \n");
 }
 void VTable::EmitSpecific(Mips *mips) { mips->EmitVTable(label, methodLabels); }
+
+bool Instruction::UpdateLiveVar() {
+  out = LocationSet();
+  for (auto inst : succ->Get()) {
+    auto &instIn = inst->in;
+    out.insert(instIn.begin(), instIn.end());
+  }
+
+  LocationSet _in, kill = Kill(), gen = Gen();
+  {
+    LocationSet temp;
+    std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
+                        std::inserter(temp, temp.begin()));
+    std::set_union(temp.begin(), temp.end(), gen.begin(), gen.end(),
+                   std::inserter(_in, _in.begin()));
+  }
+
+  if (_in != in) {
+    std::swap(in, _in);
+    return true;
+  }
+  return false;
+}

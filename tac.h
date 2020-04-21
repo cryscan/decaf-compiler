@@ -68,6 +68,7 @@ protected:
   char printed[128];
 
   List<Instruction *> *succ;
+  LocationSet in, out;
 
 public:
   Instruction() { succ = new List<Instruction *>; }
@@ -78,6 +79,10 @@ public:
 
   virtual LocationSet Kill() const { return LocationSet(); };
   virtual LocationSet Gen() const { return LocationSet(); };
+
+  bool UpdateLiveVar();
+  const LocationSet &GetIn() const { return in; }
+  const LocationSet &GetOut() const { return out; }
 
   virtual void Print();
   virtual void EmitSpecific(Mips *mips) = 0;
@@ -236,8 +241,6 @@ public:
   // used to backpatch the instruction with frame size once known
   void SetFrameSize(int numBytesForAllLocalsAndTemps);
   void EmitSpecific(Mips *mips);
-
-  void AddSucc(Instruction *) {}
 };
 
 class EndFunc : public Instruction {

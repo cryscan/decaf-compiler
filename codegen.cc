@@ -231,42 +231,13 @@ void CodeGenerator::BuildControlFlow(int begin, int end) {
 }
 
 void CodeGenerator::LiveAnalyze(int begin, int end) {
-  for (int i = begin; i < end; ++i) {
-    auto inst = code->Nth(i);
-    instIn.emplace(inst, LocationSet());
-  }
-
   bool changed = true;
   while (changed) {
     changed = false;
     for (int i = begin; i < end; ++i) {
       auto inst = code->Nth(i);
-
-      // union of successors' in
-      LocationSet out;
-      for (auto succ : inst->GetSucc()->Get()) {
-        auto &succIn = instIn.at(succ);
-        out.insert(succIn.begin(), succIn.end());
-      }
-
-      instOut[inst] = out;
-
-      auto kill = inst->Kill();
-      auto gen = inst->Gen();
-
-      {
-        LocationSet temp;
-        std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
-                            std::inserter(temp, temp.begin()));
-        std::set_union(temp.begin(), temp.end(), gen.begin(), gen.end(),
-                       std::inserter(out, out.begin()));
-      }
-
-      auto &in = instIn.at(inst);
-      if (in != out) {
+      if (inst->UpdateLiveVar())
         changed = true;
-        std::swap(in, out);
-      }
     }
   }
 }
@@ -279,7 +250,7 @@ void CodeGenerator::AllocRegister(int begin, int end) {
     auto inst = code->Nth(i);
     LocationSet interf, kill, out;
     kill = inst->Kill();
-    out = instOut.at(inst);
+    out = inst->GetOut();
     std::set_union(kill.begin(), kill.end(), out.begin(), out.end(),
                    std::inserter(interf, interf.begin()));
 
@@ -296,7 +267,7 @@ void CodeGenerator::AllocRegister(int begin, int end) {
   for (auto var : varSet) {
     auto index = color[var];
     if (index > 0) {
-      auto reg = Mips::Register((int)Mips::t0 + index);
+      auto reg = Mips::Register((int)Mips::t0 + index - 1);
       var->SetRegister(reg);
     }
   }
