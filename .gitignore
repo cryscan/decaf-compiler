@@ -38,3 +38,5 @@ y.output
 y.tab.c 
 y.tab.h 
 *.yy.c
+
+out

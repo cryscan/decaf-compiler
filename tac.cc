@@ -179,7 +179,15 @@ void ACall::EmitSpecific(Mips *mips) {
   /* pp5: need to save registers before a function call
    * and restore them back after the call.
    */
+  for (auto param : in)
+    if (auto reg = param->GetRegister())
+      mips->SpillRegister(param, reg);
+
   mips->EmitACall(dst, methodAddr);
+
+  for (auto param : in)
+    if (auto reg = param->GetRegister())
+      mips->FillRegister(param, reg);
 }
 
 VTable::VTable(const char *l, List<const char *> *m)
@@ -203,14 +211,11 @@ bool Instruction::UpdateLiveVar() {
     out.insert(instIn.begin(), instIn.end());
   }
 
-  LocationSet _in, kill = Kill(), gen = Gen();
-  {
-    LocationSet temp;
-    std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
-                        std::inserter(temp, temp.begin()));
-    std::set_union(temp.begin(), temp.end(), gen.begin(), gen.end(),
-                   std::inserter(_in, _in.begin()));
-  }
+  LocationSet _in, temp, kill = Kill(), gen = Gen();
+  std::set_difference(out.begin(), out.end(), kill.begin(), kill.end(),
+                      std::inserter(temp, temp.begin()));
+  std::set_union(temp.begin(), temp.end(), gen.begin(), gen.end(),
+                 std::inserter(_in, _in.begin()));
 
   if (_in != in) {
     std::swap(in, _in);

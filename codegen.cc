@@ -209,24 +209,25 @@ void CodeGenerator::CollectLabels() {
       labels->emplace(label->GetLabel(), label);
 }
 
-void Goto::AddExtraSucc() {
+void Goto::AddSucc(Instruction *) {
   auto labels = codeGen.GetLabels();
   auto inst = labels->at(label);
   succ->Append(inst);
 }
 
-void IfZ::AddExtraSucc() {
+void IfZ::AddSucc(Instruction *next) {
+  Instruction::AddSucc(next);
+
   auto labels = codeGen.GetLabels();
   auto inst = labels->at(label);
   succ->Append(inst);
 }
 
 void CodeGenerator::BuildControlFlow(int begin, int end) {
-  for (int i = begin; i < end - 1; ++i) {
+  for (int i = begin; i < end; ++i) {
     auto inst = code->Nth(i);
     auto next = code->Nth(i + 1);
     inst->AddSucc(next);
-    inst->AddExtraSucc();
   }
 }
 
@@ -248,9 +249,8 @@ void CodeGenerator::AllocRegister(int begin, int end) {
 
   for (int i = begin; i < end; ++i) {
     auto inst = code->Nth(i);
-    LocationSet interf, kill, out;
-    kill = inst->Kill();
-    out = inst->GetOut();
+    LocationSet interf, kill = inst->Kill(), gen = inst->Gen(),
+                        out = inst->GetOut();
     std::set_union(kill.begin(), kill.end(), out.begin(), out.end(),
                    std::inserter(interf, interf.begin()));
 
@@ -258,7 +258,8 @@ void CodeGenerator::AllocRegister(int begin, int end) {
       for (auto v : interf)
         graph.AddEdge(u, v);
 
-    varSet.insert(interf.begin(), interf.end());
+    std::set_union(kill.begin(), kill.end(), gen.begin(), gen.end(),
+                   std::inserter(varSet, varSet.begin()));
   }
 
   graph.KColor(Mips::NumGeneralPurposeRegs);
@@ -273,7 +274,19 @@ void CodeGenerator::AllocRegister(int begin, int end) {
   }
 }
 
-void CodeGenerator::Optimize() {
+void CodeGenerator::DoCodeGen(int begin, int end) {
+  if (IsDebugOn("tac")) { // if debug don't translate to mips, just print Tac
+    for (int i = begin; i < end; ++i)
+      code->Nth(i)->Print();
+  } else {
+    Mips mips;
+    mips.EmitPreamble();
+    for (int i = begin; i < end; ++i)
+      code->Nth(i)->Emit(&mips);
+  }
+}
+
+void CodeGenerator::Process() {
   CollectLabels();
 
   int begin = 0, end = 0;
@@ -281,11 +294,16 @@ void CodeGenerator::Optimize() {
     auto inst = code->Nth(i);
     if (dynamic_cast<BeginFunc *>(inst)) {
       begin = i;
+
+      DoCodeGen(end, begin);
     } else if (dynamic_cast<EndFunc *>(inst)) {
       end = i;
       BuildControlFlow(begin, end);
       LiveAnalyze(begin, end);
       AllocRegister(begin, end);
+
+      DoCodeGen(begin, end);
     }
   }
+  DoCodeGen(end, code->NumElements());
 }

@@ -53,6 +53,8 @@ private:
   void LiveAnalyze(int begin, int end);
   void AllocRegister(int begin, int end);
 
+  void DoCodeGen(int begin, int end);
+
 public:
   // Here are some class constants to remind you of the offsets
   // used for globals, locals, and parameters. You will be
@@ -183,7 +185,7 @@ public:
   // need access to the vtable, you use LoadLabel of class name.
   void GenVTable(const char *className, List<const char *> *methodLabels);
 
-  void Optimize();
+  void Process();
 
   // Emits the final "object code" for the program by
   // translating the sequence of Tac instructions into their mips
@@ -204,12 +206,6 @@ template <typename T> class Graph {
     for (auto v : data.at(u))
       data.at(v).erase(u);
     data.erase(u);
-  }
-
-  void AddEdges(T u, Value e) {
-    for (auto v : e)
-      data[v].insert(u);
-    data.emplace(u, e);
   }
 
 public:
@@ -259,13 +255,7 @@ public:
       colors.erase(used);
     }
 
-    if (colors.empty()) {
-      // spill the vertex
-      color[u] = 0;
-    } else {
-      color[u] = *colors.begin();
-      AddEdges(u, e);
-    }
+    color[u] = colors.empty() ? 0 : *colors.begin();
   }
 
   const std::map<T, int> &GetColor() const { return color; }

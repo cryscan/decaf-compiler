@@ -49,8 +49,8 @@ void Program::Emit() {
   for (auto decl : decls->Get())
     decl->Emit();
 
-  codeGen.Optimize();
-  codeGen.DoFinalCodeGen();
+  codeGen.Process();
+  // codeGen.DoFinalCodeGen();
 }
 
 StmtBlock::StmtBlock(List<VarDecl *> *d, List<Stmt *> *s) {

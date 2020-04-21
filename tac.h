@@ -74,7 +74,6 @@ public:
   Instruction() { succ = new List<Instruction *>; }
 
   virtual void AddSucc(Instruction *inst) { succ->Append(inst); }
-  virtual void AddExtraSucc() {}
   List<Instruction *> *GetSucc() const { return succ; }
 
   virtual LocationSet Kill() const { return LocationSet(); };
@@ -175,8 +174,7 @@ public:
   Store(Location *d, Location *s, int offset = 0);
   void EmitSpecific(Mips *mips);
 
-  LocationSet Kill() const { return {dst}; }
-  LocationSet Gen() const { return {src}; }
+  LocationSet Gen() const { return {src, dst}; }
 };
 
 class BinaryOp : public Instruction {
@@ -215,8 +213,7 @@ public:
   void EmitSpecific(Mips *mips);
   const char *GetLabel() { return label; }
 
-  void AddSucc(Instruction *) {}
-  void AddExtraSucc();
+  void AddSucc(Instruction *);
 };
 
 class IfZ : public Instruction {
@@ -229,8 +226,7 @@ public:
   const char *GetLabel() { return label; }
 
   LocationSet Gen() const { return {test}; }
-
-  void AddExtraSucc();
+  void AddSucc(Instruction *next);
 };
 
 class BeginFunc : public Instruction {
@@ -259,8 +255,6 @@ public:
   void EmitSpecific(Mips *mips);
 
   LocationSet Kill() const { return {val}; }
-
-  void AddSucc(Instruction *) {}
 };
 
 class PushParam : public Instruction {
